@@ -1,13 +1,35 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
+import { useAuth } from '@/context/auth-context';
+import { logError } from '@/utils/errors';
 
 export default function HomeScreen() {
+  const { profile, logout, resendVerificationEmail } = useAuth();
+
+  async function handleLogout() {
+    try {
+      await logout();
+      // No manual navigation here: app/_layout.tsx's Stack.Protected swaps
+      // to the (auth) group automatically once auth state resolves.
+    } catch (error) {
+      logError(error, { where: 'HomeScreen.handleLogout' });
+    }
+  }
+
+  async function handleResendVerification() {
+    try {
+      await resendVerificationEmail();
+    } catch (error) {
+      logError(error, { where: 'HomeScreen.handleResendVerification' });
+    }
+  }
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -20,6 +42,23 @@ export default function HomeScreen() {
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">
+          Signed in as {profile?.firstName} {profile?.lastName}
+        </ThemedText>
+        <ThemedText>{profile?.email}</ThemedText>
+        {profile && !profile.emailVerified ? (
+          <ThemedView style={styles.verifyBanner}>
+            <ThemedText>Please verify your email to unlock all features.</ThemedText>
+            <Pressable onPress={handleResendVerification}>
+              <ThemedText type="link">Resend verification email</ThemedText>
+            </Pressable>
+          </ThemedView>
+        ) : null}
+        <Pressable onPress={handleLogout}>
+          <ThemedText type="link">Sign out</ThemedText>
+        </Pressable>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
@@ -87,6 +126,12 @@ const styles = StyleSheet.create({
   stepContainer: {
     gap: 8,
     marginBottom: 8,
+  },
+  verifyBanner: {
+    gap: 4,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(234, 179, 8, 0.12)',
   },
   reactLogo: {
     height: 178,
